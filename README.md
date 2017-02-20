@@ -3,7 +3,7 @@
 > 关于我，欢迎关注  
   邮箱：437220638@qq.com
  
-# Screenshots
+## Screenshots
 ![image](/screenshots/video1.gif)
 
 ##特性
