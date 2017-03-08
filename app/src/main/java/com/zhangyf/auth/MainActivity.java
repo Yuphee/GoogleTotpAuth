@@ -9,14 +9,15 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import com.zhangyf.auth.anim.RotateAnimation;
-import com.zhangyf.auth.config.MTokenConstants;
-import com.zhangyf.auth.utils.Base32String;
-import com.zhangyf.auth.utils.CountUtils;
-import com.zhangyf.auth.utils.OtpSourceException;
-import com.zhangyf.auth.utils.PasscodeGenerator;
-import com.zhangyf.auth.utils.PrefsUtil;
-import com.zhangyf.auth.utils.TotpCountdownTask;
-import com.zhangyf.auth.utils.Utilities;
+import com.zhangyf.library.config.MTokenConstants;
+import com.zhangyf.library.utils.Base32String;
+import com.zhangyf.library.utils.CountUtils;
+import com.zhangyf.library.utils.OtpSourceException;
+import com.zhangyf.library.utils.PasscodeGenerator;
+import com.zhangyf.library.utils.SPUtils;
+import com.zhangyf.library.utils.TotpCountdownTask;
+import com.zhangyf.library.utils.TotpUtil;
+import com.zhangyf.library.utils.Utilities;
 
 import java.security.GeneralSecurityException;
 import java.security.InvalidKeyException;
@@ -29,13 +30,18 @@ import java.util.TimerTask;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
+import butterknife.BindView;
+import butterknife.ButterKnife;
+import butterknife.Unbinder;
+
 public class MainActivity extends AppCompatActivity {
 
-    private static final int PIN_LENGTH = 6;
-    private static final int REFLECTIVE_PIN_LENGTH = 9;
-    private String SEED;
+    private Unbinder mUnbinder = null;
+    //进度条刷新周期
     private static final long TOTP_COUNTDOWN_REFRESH_PERIOD = 100;
+    //倒计时任务
     private TotpCountdownTask mTotpCountdownTask;
+    //当前相位
     private double mTotpCountdownPhase;
     // totp计算结果
     private String result;
@@ -44,43 +50,71 @@ public class MainActivity extends AppCompatActivity {
     private Handler handler;
     private char[] totpChar = new char[6];
 
-    private TextView rotate_text1;
-    private TextView rotate_text2;
-    private TextView rotate_text3;
-    private TextView rotate_text4;
-    private TextView rotate_text5;
-    private TextView rotate_text6;
-    private TextView serverTime;
-    private ProgressBar key_bar;
-    private TextView count_number;
-
-    public PrefsUtil prefsUtil;
+    @BindView(R.id.rotate_text1)
+    TextView rotate_text1;
+    @BindView(R.id.rotate_text2)
+    TextView rotate_text2;
+    @BindView(R.id.rotate_text3)
+    TextView rotate_text3;
+    @BindView(R.id.rotate_text4)
+    TextView rotate_text4;
+    @BindView(R.id.rotate_text5)
+    TextView rotate_text5;
+    @BindView(R.id.rotate_text6)
+    TextView rotate_text6;
+    @BindView(R.id.serverTime)
+    TextView serverTime;
+    @BindView(R.id.key_bar)
+    ProgressBar key_bar;
+    @BindView(R.id.count_number)
+    TextView count_number;
 
     private Date date;
     private SimpleDateFormat timeFromat;
     private String servertime;
+    private Timer timer;
+    private TimerTask task;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        mUnbinder = ButterKnife.bind(this);
         initWidget();
         initData();
     }
 
-    private void initWidget() {
-        prefsUtil = new PrefsUtil(this);
-        rotate_text1 = (TextView) findViewById(R.id.rotate_text1);
-        rotate_text2 = (TextView) findViewById(R.id.rotate_text2);
-        rotate_text3 = (TextView) findViewById(R.id.rotate_text3);
-        rotate_text4 = (TextView) findViewById(R.id.rotate_text4);
-        rotate_text5 = (TextView) findViewById(R.id.rotate_text5);
-        rotate_text6 = (TextView) findViewById(R.id.rotate_text6);
-        serverTime = (TextView) findViewById(R.id.serverTime);
-        count_number = (TextView) findViewById(R.id.count_number);
-        serverTime = (TextView) findViewById(R.id.serverTime);
-        key_bar = (ProgressBar) findViewById(R.id.key_bar);
+    @Override
+    public void onStart() {
+        startTotpCountdownTask();
+        super.onStart();
+    }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // 首次进入刷新动画
+        updateDataAndExcuteAnim();
+    }
+
+    @Override
+    public void onStop() {
+        stopTotpCountdownTask();
+        super.onStop();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (null != mUnbinder) {
+            mUnbinder.unbind();
+        }
+        if (timer != null) {
+            timer.cancel();
+        }
+    }
+
+    private void initWidget() {
         txtArray[0] = rotate_text1;
         txtArray[1] = rotate_text2;
         txtArray[2] = rotate_text3;
@@ -90,11 +124,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void initData() {
-        SEED = prefsUtil.getString(MTokenConstants.PREFS_USER_KEY, "");
-        if(SEED.equals("")){
-            SEED = "FZ6S5VB64HVSYLJN";
-        }
-
         handler = new Handler(){
             @Override
             public void handleMessage(Message msg) {
@@ -112,12 +141,12 @@ public class MainActivity extends AppCompatActivity {
             }
         };
 
-
-        Timer timer = new Timer();
-        TimerTask task = new TimerTask() {
+        // 服务器时间显示任务，得与服务器校准事件后再启动
+        timer = new Timer();
+        task = new TimerTask() {
             @Override
             public void run() {
-                date = new Date(System.currentTimeMillis() + prefsUtil.getLong(MTokenConstants.PREFS_SERVICE_TIME_REDUCE, 0l));
+                date = new Date(System.currentTimeMillis() + SPUtils.getLong(MTokenConstants.PREFS_SERVICE_TIME_REDUCE, 0l));
                 timeFromat=new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                 servertime = timeFromat.format(date);
                 Message msg = new Message();
@@ -126,33 +155,20 @@ public class MainActivity extends AppCompatActivity {
             }
         };
         timer.schedule(task, 0, 1000);
-
-        Log.d("seed", SEED);
-
-        // 第一次进来的时候计算
-        updateDataAndExcuteAnim();
-
     }
 
+    /**
+     * 刷新界面，启动动画
+     */
     private void updateDataAndExcuteAnim(){
-        try {
-            // 加上与服务器的时间差，再计算结果
-            Log.d("reduce time:", String.valueOf(prefsUtil.getLong(MTokenConstants.PREFS_SERVICE_TIME_REDUCE, 0l)));
-            result = computePin(SEED, CountUtils.getValueAtTime(CountUtils
-                    .millisToSeconds(CountUtils.currentTimeMillis(prefsUtil))), null);
-        } catch (OtpSourceException e) {
-            e.printStackTrace();
-        }
 
-        if(result != null){
-            totpChar[0] = result.charAt(0);
-            totpChar[1] = result.charAt(1);
-            totpChar[2] = result.charAt(2);
-            totpChar[3] = result.charAt(3);
-            totpChar[4] = result.charAt(4);
-            totpChar[5] = result.charAt(5);
-        }
+        Log.d("reduce time:", String.valueOf(SPUtils.getLong(MTokenConstants.PREFS_SERVICE_TIME_REDUCE, 0l)));
 
+        result = TotpUtil.generate();
+
+        if(result != null && result.length() == 6){
+            totpChar = result.toCharArray();
+        }
 
         int i = 0;
         while(true){
@@ -168,75 +184,17 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    /**
-     * Computes the one-time PIN given the secret key.
-     *
-     * @author zhangyf
-     *
-     * @param secret
-     *            the secret key
-     * @param otp_state
-     *            current token state (counter or time-interval)
-     * @param challenge
-     *            optional challenge bytes to include when computing passcode.
-     * @return the PIN
-     */
-    private String computePin(String secret, long otp_state, byte[] challenge)
-            throws OtpSourceException {
-        if (secret == null || secret.length() == 0) {
-            throw new OtpSourceException("Null or empty secret");
-        }
 
-        try {
-            PasscodeGenerator.Signer signer = getSigningOracle(secret);
-            PasscodeGenerator pcg = new PasscodeGenerator(signer,
-                    (challenge == null) ? PIN_LENGTH : REFLECTIVE_PIN_LENGTH);
-
-            return (challenge == null) ? pcg.generateResponseCode(otp_state)
-                    : pcg.generateResponseCode(otp_state, challenge);
-        } catch (GeneralSecurityException e) {
-            throw new OtpSourceException("Crypto failure", e);
-        }
-    }
-
-    static PasscodeGenerator.Signer getSigningOracle(String secret) {
-        try {
-            byte[] keyBytes = decodeKey(secret);
-            final Mac mac = Mac.getInstance("HMACSHA1");
-            mac.init(new SecretKeySpec(keyBytes, ""));
-
-            // Create a signer object out of the standard Java MAC
-            // implementation.
-            return new PasscodeGenerator.Signer() {
-                @Override
-                public byte[] sign(byte[] data) {
-                    return mac.doFinal(data);
-                }
-            };
-        } catch (Base32String.DecodingException error) {
-            Log.e("Mlog", error.getMessage());
-        } catch (NoSuchAlgorithmException error) {
-            Log.e("Mlog", error.getMessage());
-        } catch (InvalidKeyException error) {
-            Log.e("Mlog", error.getMessage());
-        }
-
-        return null;
-    }
-
-    private static byte[] decodeKey(String secret) throws Base32String.DecodingException {
-        return Base32String.decode(secret);
-    }
 
     /**
      * 刷新任务
      * @author zhangyf
      */
-    private void updateCodesAndStartTotpCountdownTask() {
+    private void startTotpCountdownTask() {
         stopTotpCountdownTask();
 
         mTotpCountdownTask = new TotpCountdownTask(
-                TOTP_COUNTDOWN_REFRESH_PERIOD,prefsUtil);
+                TOTP_COUNTDOWN_REFRESH_PERIOD);
         mTotpCountdownTask.setListener(new TotpCountdownTask.Listener() {
             @Override
             public void onTotpCountdown(long millisRemaining) {
@@ -279,7 +237,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * 计算新的phase
+     * 设置新的phase
      * @author zhangyf
      */
     private void setTotpCountdownPhase(double phase) {
@@ -292,9 +250,8 @@ public class MainActivity extends AppCompatActivity {
      * @author zhangyf
      */
     private void updateCountdownIndicators() {
-        ProgressBar totp_progress = (ProgressBar)findViewById(R.id.key_bar);
-        if (totp_progress != null && count_number != null) {
-            totp_progress.setProgress((int) (2000 - mTotpCountdownPhase * 2000));
+        if (key_bar != null && count_number != null) {
+            key_bar.setProgress((int) (2000 - mTotpCountdownPhase * 2000));
             String count = String.valueOf(Math.ceil(mTotpCountdownPhase*30));
             count_number.setText(count.substring(0, count.indexOf(".")));
         }
@@ -306,14 +263,7 @@ public class MainActivity extends AppCompatActivity {
      *
      */
     private void refreshVerificationCodes() {
-        try {
-            result = computePin(SEED, CountUtils.getValueAtTime(CountUtils
-                    .millisToSeconds(CountUtils.currentTimeMillis(prefsUtil))), null);
-//			pin_text.setText(result);
-            updateDataAndExcuteAnim();
-        } catch (OtpSourceException e) {
-            e.printStackTrace();
-        }
+        updateDataAndExcuteAnim();
         setTotpCountdownPhase(1.0);
     }
 
@@ -356,21 +306,4 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-
-    @Override
-    public void onResume() {
-        super.onResume();
-    }
-
-    @Override
-    public void onStart() {
-        updateCodesAndStartTotpCountdownTask();
-        super.onStart();
-    }
-
-    @Override
-    public void onStop() {
-        stopTotpCountdownTask();
-        super.onStop();
-    }
 }

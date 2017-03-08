@@ -1,7 +1,7 @@
-package com.zhangyf.auth.utils;
+package com.zhangyf.library.utils;
 
 
-import com.zhangyf.auth.config.MTokenConstants;
+import com.zhangyf.library.config.MTokenConstants;
 
 public class CountUtils {
 	
@@ -14,8 +14,8 @@ public class CountUtils {
 	/**
 	 * Gets the number of milliseconds since epoch.
 	 */
-	public static long currentTimeMillis(PrefsUtil prefsUtil) {
-		return System.currentTimeMillis() + prefsUtil.getLong(MTokenConstants.PREFS_SERVICE_TIME_REDUCE, 0l);
+	public static long currentTimeMillis() {
+		return System.currentTimeMillis() + SPUtils.getLong(MTokenConstants.PREFS_SERVICE_TIME_REDUCE, 0l);
 	}
 
 	  public static long getValueAtTime(long time) {

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.zhangyf.auth.utils;
+package com.zhangyf.library.utils;
 
 import java.util.HashMap;
 import java.util.Locale;

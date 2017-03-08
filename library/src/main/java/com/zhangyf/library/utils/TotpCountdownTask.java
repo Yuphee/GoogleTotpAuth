@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.zhangyf.auth.utils;
+package com.zhangyf.library.utils;
 
 
 import android.os.Handler;
@@ -29,7 +29,6 @@ import android.os.Handler;
 public class TotpCountdownTask implements Runnable {
   private final long mRemainingTimeNotificationPeriod;
   private final Handler mHandler = new Handler();
-  private PrefsUtil prefsUtil;
 
   private long mLastSeenCounterValue = Long.MIN_VALUE;
   private boolean mShouldStop;
@@ -60,9 +59,8 @@ public class TotpCountdownTask implements Runnable {
    *        notifies its listener about the time remaining until the @{code counter} changes its
    *        value.
    */
-  public TotpCountdownTask(long remainingTimeNotificationPeriod,PrefsUtil prefsUtil) {
+  public TotpCountdownTask(long remainingTimeNotificationPeriod) {
     mRemainingTimeNotificationPeriod = remainingTimeNotificationPeriod;
-    this.prefsUtil = prefsUtil;
   }
 
   /**
@@ -103,7 +101,7 @@ public class TotpCountdownTask implements Runnable {
       return;
     }
 
-    long now = CountUtils.currentTimeMillis(prefsUtil);
+    long now = CountUtils.currentTimeMillis();
     long counterValue = getCounterValue(now);
     if (mLastSeenCounterValue != counterValue) {
       mLastSeenCounterValue = counterValue;
@@ -115,7 +113,7 @@ public class TotpCountdownTask implements Runnable {
   }
 
   private void scheduleNextInvocation() {
-    long now = CountUtils.currentTimeMillis(prefsUtil);
+    long now = CountUtils.currentTimeMillis();
     long counterValueAge = getCounterValueAge(now);
     long timeTillNextInvocation =
         mRemainingTimeNotificationPeriod - (counterValueAge % mRemainingTimeNotificationPeriod);

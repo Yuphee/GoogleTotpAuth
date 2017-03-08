@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.zhangyf.auth.utils;
+package com.zhangyf.library.utils;
 
 /**
  * Indicates that {@link OtpSource} failed to performed the requested operation.

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.zhangyf.auth.utils;
+package com.zhangyf.library.utils;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInput;
