@@ -2,6 +2,7 @@
 手机宝令 基于 GoogleAuthenticator的totp算法的手机宝令功能，附带翻牌效果
 > 关于我，欢迎关注  
   邮箱：437220638@qq.com
+  如果对你有点帮助的话，点个star哦~
  
 ## Screenshots
 ![image](/screenshots/video1.gif)
