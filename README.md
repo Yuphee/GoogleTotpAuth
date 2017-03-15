@@ -17,7 +17,42 @@
 - 最后生成一个6位的认证令牌
 
 ##使用方法
-参考demo使用
+-SEED初始化
+ ```java
+public class MApplication extends Application{
+
+    private static MApplication instance = null;
+
+    public static MApplication getInstance() {
+        if (null == instance) {
+            instance = new MApplication();
+        }
+        return instance;
+    }
+
+    public MApplication() {
+
+    }
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        instance = this;
+        SPUtils.init(this);
+        TotpUtil.init("FZ6S5VB64HVSYLJN");// 初始化SEED
+    }
+}
+```
+-生成令牌
+ ```java
+ 
+ TotpUtil.generate();
+
+ ```
+ -动画相关的逻辑参考MainActivity
+ 
+##更新 
+1.1 优化项目结构，集成更加方便
 
 ##TODO
-将一系列的算法进一步分装,方便集成。
+暂时木有
