@@ -39,7 +39,7 @@ allprojects {
  Both have to write, or else can not be loaded successfully.
 
 ##使用方法
--SEED初始化
+-seed初始化
  ```java
 public class MApplication extends Application{
 
