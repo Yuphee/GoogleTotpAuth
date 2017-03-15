@@ -16,6 +16,28 @@
 - 项目中时间步长为30s,算法还需传递一个当前时间，必须保证这个时间的准确性，所以必须和服务器时间相同(可以有一定的误差，不能太大)
 - 最后生成一个6位的认证令牌
 
+## Getting started
+Add it in your root build.gradle at the end of repositories:
+ ```java
+allprojects {
+    repositories {
+        ...
+        maven { url "https://jitpack.io" }
+    }
+}
+ ```
+ Add the dependency
+  ```java
+ dependencies {
+        compile 'com.github.Yuphee:GoogleTotpAuth:VERSION_CODE'
+}
+ ```
+ replace VERSION_CODE with real version name such as released in [Here](https://github.com/Yuphee/GoogleTotpAuth/releases)
+ 
+ ### notice
+ 
+ Both have to write, or else can not be loaded successfully.
+
 ##使用方法
 -SEED初始化
  ```java
