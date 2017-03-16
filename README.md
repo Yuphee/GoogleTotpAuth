@@ -73,8 +73,5 @@ public class MApplication extends Application{
  ```
  -动画相关的逻辑参考MainActivity
  
-## 更新 
-1.1 优化项目结构，集成更加方便
-
 ## TODO
 暂时木有
